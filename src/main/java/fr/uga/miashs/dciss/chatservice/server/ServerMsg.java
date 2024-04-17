@@ -62,11 +62,35 @@ public class ServerMsg {
 		return res;
 	}
 
-	public boolean removeGroup(int groupId) {
-		GroupMsg g = groups.remove(groupId);
-		if (g == null)
+	public boolean removeGroup(int userId, int groupId) {
+		GroupMsg g = groups.get(groupId);
+		if (g == null || userId != g.getOwnerId()) {
+			LOG.info("Deleting Group " + groupId + " is forbiden for " + userId);
 			return false;
+		}
+		g = groups.remove(groupId);
 		g.beforeDelete();
+		LOG.info("Group " + groupId + " deleted");
+		return true;
+	}
+	
+	public boolean AddUsertoGroup(int userId, int groupId, int userToAddId) {
+		GroupMsg g = groups.get(groupId);
+		if (g == null || userId != g.getOwnerId() || g.getMembers().contains(users.get(userToAddId)) ) {
+			LOG.info("Adding user " + userToAddId + " is impossible");
+			return false;
+		}
+		g.addMember(users.get(userToAddId));
+		return true;
+	}
+	
+	public boolean RemoveUsertoGroup(int userId, int groupId, int userToAddId) {
+		GroupMsg g = groups.get(groupId);
+		if (g == null || userId != g.getOwnerId() || !g.getMembers().contains(users.get(userToAddId))) {
+			LOG.info("Removing user " + userToAddId + " is impossible");
+			return false;
+		}
+		g.removeMember(users.get(userToAddId));
 		return true;
 	}
 
@@ -136,7 +160,7 @@ public class ServerMsg {
 					// Si l'Id est inconnu ou s'il ne correspond pas au mot de passe saisi
 					s.close();
 				}
-				
+
 				// si l'identifiant existe ou est nouveau alors
 				// deux "taches"/boucles sont lancées en parralèle
 				// une pour recevoir les messages du client,

@@ -30,13 +30,25 @@ public class ServerPacketProcessor implements PacketProcessor {
 		ByteBuffer buf = ByteBuffer.wrap(p.data);
 		byte type = buf.get();
 		
-		if (type == 1) { // cas creation de groupe
+		switch (type) {
+		case 1 :  // Création d'un groupe
 			createGroup(p.srcId,buf);
-		} else {
+			break;
+		case 2 : // Suppression d'un groupe
+			server.removeGroup(p.srcId, buf.getInt());
+			break;
+		case 3 : // Ajout d'un membre
+			server.AddUsertoGroup(p.srcId, buf.getInt(), buf.getInt());
+			break;
+		case 4 : // Suppression d'un membre
+			server.RemoveUsertoGroup(p.srcId, buf.getInt(), buf.getInt());
+			break;
+		default : 
 			LOG.warning("Server message of type=" + type + " not handled by procesor");
+
 		}
 	}
-	
+
 	public void createGroup(int ownerId, ByteBuffer data) {
 		int nb = data.getInt();
 		GroupMsg g = server.createGroup(ownerId);

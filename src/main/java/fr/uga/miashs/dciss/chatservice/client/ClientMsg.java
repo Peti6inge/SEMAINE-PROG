@@ -62,8 +62,8 @@ public class ClientMsg {
 	}
 
 	/**
-	 * Create a client without id, the server will provide an id during the
-	 * session start
+	 * Create a client without id, the server will provide an id during the session
+	 * start
 	 * 
 	 * @param address The server address or hostname
 	 * @param port    The port number
@@ -188,9 +188,9 @@ public class ClientMsg {
 	}
 
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
-		
+
 		// Authentification
-		
+
 		int id = 0;
 		String password;
 		boolean creation = false;
@@ -202,7 +202,7 @@ public class ClientMsg {
 			password = args[1];
 		} else {
 			System.out.println("Voulez-vous créer un compte? (o/n)");
-			creation = sc.nextLine().equals("o")?true:false;
+			creation = sc.nextLine().equals("o") ? true : false;
 			if (creation) {
 				// Création d'un compte
 				System.out.println("Saisissez votre mot de passe :");
@@ -215,13 +215,13 @@ public class ClientMsg {
 				password = sc.nextLine();
 			}
 		}
-		ClientMsg c ;
+		ClientMsg c;
 		if (creation) {
 			c = new ClientMsg("localhost", 1666);
 		} else {
 			c = new ClientMsg(id, "localhost", 1666);
 		}
-		
+
 		// add a dummy listener that print the content of message as a string
 		c.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
 
@@ -234,36 +234,72 @@ public class ClientMsg {
 		c.startSession(password);
 		System.out.println("Vous êtes : " + c.getIdentifier());
 
-		// Thread.sleep(5000);
-
-		// l'utilisateur avec id 4 crée un grp avec 1 et 3 dedans (et lui meme)
-		if (c.getIdentifier() == 4) {
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			DataOutputStream dos = new DataOutputStream(bos);
-
-			// byte 1 : create group on server
-			dos.writeByte(1);
-
-			// nb members
-			dos.writeInt(2);
-			// list members
-			dos.writeInt(1);
-			dos.writeInt(3);
-			dos.flush();
-
-			c.sendPacket(0, bos.toByteArray());
-
-		}
-
 		String lu = null;
 		while (!"\\quit".equals(lu)) {
 			try {
 				System.out.println("A qui voulez vous écrire ? ");
 				int dest = Integer.parseInt(sc.nextLine());
 
-				System.out.println("Votre message ? ");
-				lu = sc.nextLine();
-				c.sendPacket(dest, lu.getBytes());
+				if (dest == 0) {
+					ByteArrayOutputStream bos = new ByteArrayOutputStream();
+					DataOutputStream dos = new DataOutputStream(bos);
+					// Création de groupe
+					System.out.println("Que voulez-vous faire? (1 : création de groupe, 2 : Suppression de groupe, 3 : Ajout d'un membre dans un groupe, 4 : Suppression d'un membre dans un groupe");
+					int choix = Integer.parseInt(sc.nextLine());
+					dos.writeByte(choix);
+					switch (choix) {
+					case 1 : //création de groupe
+						System.out.println("Id des membres ? (séparé par des virgules)");
+						lu = sc.nextLine();
+						String[] parts = lu.split(","); // Diviser la chaîne en sous-chaînes en utilisant la virgule
+														// comme délimiteur
+	
+						int[] numbers = new int[parts.length]; // Créer un tableau pour stocker les entiers
+	
+						for (int i = 0; i < parts.length || i == 19; i++) {
+							numbers[i] = Integer.parseInt(parts[i].trim()); // Convertir chaque sous-chaîne en entier //
+																			// stocker dans le tableau
+						}
+						dos.writeInt(numbers.length);
+						for (int num : numbers) {
+							dos.writeInt(num);
+						}
+						dos.flush();
+						c.sendPacket(0, bos.toByteArray());
+						break;
+					case 2 : //suppression de groupe
+						System.out.println("Id du groupe?");
+						int idGroupe = Integer.parseInt(sc.nextLine());
+						dos.writeInt(idGroupe);
+						dos.flush();
+						c.sendPacket(0, bos.toByteArray());
+						break;
+					case 3 : //Ajout d'un nouveau membre
+						System.out.println("Id du groupe?");
+						int idGroupe2 = Integer.parseInt(sc.nextLine());
+						dos.writeInt(idGroupe2);
+						System.out.println("Id du membre à ajouter?");
+						int idMembre = Integer.parseInt(sc.nextLine());
+						dos.writeInt(idMembre);
+						dos.flush();
+						c.sendPacket(0, bos.toByteArray());
+						break;
+					case 4 : //Suppression d'un membre
+						System.out.println("Id du groupe?");
+						int idGroupe3 = Integer.parseInt(sc.nextLine());
+						dos.writeInt(idGroupe3);
+						System.out.println("Id du membre à supprimer?");
+						int idMembre2 = Integer.parseInt(sc.nextLine());
+						dos.writeInt(idMembre2);
+						dos.flush();
+						c.sendPacket(0, bos.toByteArray());
+						break;
+					}
+				} else {
+					System.out.println("Votre message ? ");
+					lu = sc.nextLine();
+					c.sendPacket(dest, lu.getBytes());
+				}
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
 			}

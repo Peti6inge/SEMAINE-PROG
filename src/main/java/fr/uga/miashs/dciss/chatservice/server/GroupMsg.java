@@ -35,6 +35,10 @@ public class GroupMsg implements PacketProcessor {
 		return groupId;
 	}
 	
+	public int getOwnerId() {
+		return owner.getId();
+	}
+		
 	/**
 	 * This method has to be used to add a member to the group.
 	 * It update the bidirectional relationship, i.e. the user is added to the group and the the group is added to the user.
@@ -67,7 +71,7 @@ public class GroupMsg implements PacketProcessor {
 	}
 	
 	// to be used carrefully, because it does not update birectional relationship in case of addition or removal.
-	protected Set<UserMsg> getMembers() {
+	public Set<UserMsg> getMembers() {
 		return members;
 	}
 	
