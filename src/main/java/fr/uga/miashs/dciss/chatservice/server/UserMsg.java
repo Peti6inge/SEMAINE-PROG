@@ -24,8 +24,6 @@ public class UserMsg implements PacketProcessor{
 	private final static Logger LOG = Logger.getLogger(UserMsg.class.getName());
 	
 	private int userId;
-	private String password;
-	private String name;
 	private Set<GroupMsg> groups;
 	
 	private ServerMsg server;

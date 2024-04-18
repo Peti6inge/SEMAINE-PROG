@@ -139,9 +139,7 @@ public class ServerMsg {
 
 				// lit l'identifiant et le mot de passe du client
 				int userId = dis.readInt();
-				String password = dis.readUTF();
-				LOG.info(password);
-
+	            String password = dis.readUTF();
 				if (userId == 0) {
 					// si 0 alors il faut créer un nouvel utilisateur et
 					// envoyer l'identifiant au client
@@ -156,7 +154,7 @@ public class ServerMsg {
 					dos.flush();
 				}
 
-				if (!users.containsKey(userId) || passwords.get(userId) != password) {
+				if (!users.containsKey(userId) || !(passwords.get(userId).equals(password))) {
 					// Si l'Id est inconnu ou s'il ne correspond pas au mot de passe saisi
 					s.close();
 				}

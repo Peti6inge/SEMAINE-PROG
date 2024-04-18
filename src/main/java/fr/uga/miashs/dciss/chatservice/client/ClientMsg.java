@@ -119,7 +119,7 @@ public class ClientMsg {
 				dos = new DataOutputStream(s.getOutputStream());
 				dis = new DataInputStream(s.getInputStream());
 				dos.writeInt(identifier);
-				dos.writeUTF(password);
+	            dos.writeUTF(password);
 				dos.flush();
 				if (identifier == 0) {
 					identifier = dis.readInt();
@@ -238,9 +238,14 @@ public class ClientMsg {
 		while (!"\\quit".equals(lu)) {
 			try {
 				System.out.println("A qui voulez vous écrire ? ");
-				int dest = Integer.parseInt(sc.nextLine());
-
-				if (dest == 0) {
+				String dest = sc.nextLine();
+				if (dest.equals("x")) {
+					System.out.println("Deconnexion");
+					c.closeSession();	
+				}
+				int destToInt = Integer.parseInt(dest);
+				
+				if (destToInt == 0) {
 					ByteArrayOutputStream bos = new ByteArrayOutputStream();
 					DataOutputStream dos = new DataOutputStream(bos);
 					// Création de groupe
@@ -298,7 +303,7 @@ public class ClientMsg {
 				} else {
 					System.out.println("Votre message ? ");
 					lu = sc.nextLine();
-					c.sendPacket(dest, lu.getBytes());
+					c.sendPacket(destToInt, lu.getBytes());
 				}
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
