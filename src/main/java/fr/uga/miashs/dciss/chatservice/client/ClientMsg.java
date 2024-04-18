@@ -61,7 +61,8 @@ public class ClientMsg {
 		serverPort = port;
 		identifier = id;
 		mListeners = new ArrayList<>();
-		cListeners = new ArrayList<>();
+		cListeners = new ArrayList<>();	
+		
 	}
 
 	/**
@@ -170,7 +171,6 @@ public class ClientMsg {
 				int dest = dis.readInt();
 				int length = dis.readInt();
 				byte[] data = new byte[length];
-				System.out.println("sender : " + sender + " dest : " + dest + " length : " + length);
 				dis.readFully(data);
 				notifyMessageListeners(new Packet(sender, dest, data));
 
@@ -253,7 +253,7 @@ public class ClientMsg {
 
 		// add a dummy listener that print the content of message as a string
 		c.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
-		//c.addMessageListener(p -> c.stockageBDD(p.srcId, new String(p.data), true));
+		c.addMessageListener(p -> c.stockageBDD(p.srcId, new String(p.data), true));
 
 		// add a connection listener that exit application when connection closed
 		c.addConnectionListener(active -> {
@@ -264,24 +264,24 @@ public class ClientMsg {
 		c.startSession(password);
 		System.out.println("Vous êtes : " + c.getIdentifier());
 		if (creation) {
-//			try {
-//				c.cnx = DriverManager.getConnection("jdbc:derby:target/sample;create=true");
-//			} catch (SQLException e) {
-//				e.printStackTrace();
-//				System.out.println("PAS DE CONNEXION!");
-//			}
-//			try {
-//				c.cnx.createStatement().executeUpdate("DROP TABLE MsgUser" + c.getIdentifier());
-//			} catch (SQLException e) {
-//
-//			}
-//			try {
-//				c.cnx.createStatement().executeUpdate(
-//						"CREATE TABLE MsgUser" + c.getIdentifier() + " (id INT, msg VARCHAR(255), reception BOOLEAN)");
-//			} catch (SQLException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
+			try {
+				c.cnx = DriverManager.getConnection("jdbc:derby:target/" + c.getIdentifier() + ";create=true");
+			} catch (SQLException e) {
+				e.printStackTrace();
+				System.out.println("PAS DE CONNEXION!");
+			}
+			try {
+				c.cnx.createStatement().executeUpdate("DROP TABLE MsgUser" + c.getIdentifier());
+			} catch (SQLException e) {
+
+			}
+			try {
+				c.cnx.createStatement().executeUpdate(
+						"CREATE TABLE MsgUser" + c.getIdentifier() + " (id INT, msg VARCHAR(255), reception BOOLEAN)");
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 		String lu = null;
@@ -355,7 +355,7 @@ public class ClientMsg {
 					System.out.println("Votre message ? ");
 					lu = sc.nextLine();
 					c.sendPacket(destToInt, lu.getBytes());
-					//c.stockageBDD(destToInt, lu, false);
+					c.stockageBDD(destToInt, lu, false);
 
 				}
 			} catch (InputMismatchException | NumberFormatException e) {
