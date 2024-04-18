@@ -252,7 +252,7 @@ public class ClientMsg {
 		}
 
 		// add a dummy listener that print the content of message as a string
-		c.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
+		
 		c.addMessageListener(p -> c.stockageBDD(p.srcId, new String(p.data), true));
 
 		// add a connection listener that exit application when connection closed
@@ -281,6 +281,13 @@ public class ClientMsg {
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			}
+		} else {
+			try {
+				c.cnx = DriverManager.getConnection("jdbc:derby:target/" + c.getIdentifier() + ";create=false");
+			} catch (SQLException e) {
+				e.printStackTrace();
+				System.out.println("PAS DE CONNEXION!");
 			}
 		}
 
