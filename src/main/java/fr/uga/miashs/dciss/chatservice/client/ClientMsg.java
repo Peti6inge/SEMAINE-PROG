@@ -19,6 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import fr.uga.miashs.dciss.chatservice.common.Packet;
 
+import java.sql.*;
+
 /**
  * Manages the connection to a ServerMsg. Method startSession() is used to
  * establish the connection. Then messages can be send by a call to sendPacket.
@@ -40,6 +42,7 @@ public class ClientMsg {
 
 	private List<MessageListener> mListeners;
 	private List<ConnectionListener> cListeners;
+	private Connection cnx;
 
 	/**
 	 * Create a client with an existing id, that will connect to the server at the
@@ -119,7 +122,7 @@ public class ClientMsg {
 				dos = new DataOutputStream(s.getOutputStream());
 				dis = new DataInputStream(s.getInputStream());
 				dos.writeInt(identifier);
-	            dos.writeUTF(password);
+				dos.writeUTF(password);
 				dos.flush();
 				if (identifier == 0) {
 					identifier = dis.readInt();
@@ -189,6 +192,30 @@ public class ClientMsg {
 		notifyConnectionListeners(false);
 	}
 
+	private void stockageBDD(int id, String msg, boolean reception) {
+		try {
+
+			PreparedStatement pstmt = cnx.prepareStatement("INSERT INTO MsgUser" + identifier + " VALUES (?,?,?)");
+
+			pstmt.setInt(1, id);
+			pstmt.setString(2, msg);
+			pstmt.setBoolean(3, reception);
+
+			boolean inserted = pstmt.executeUpdate() == 1;
+
+			ResultSet res = cnx.createStatement().executeQuery("SELECT * FROM MsgUser" + identifier);
+
+			while (res.next()) {
+				System.out.println(res.getInt(1) + " - " + res.getString(2) + " - " + res.getBoolean(3));
+			}
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
 
 		// Authentification
@@ -226,6 +253,7 @@ public class ClientMsg {
 
 		// add a dummy listener that print the content of message as a string
 		c.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
+		//c.addMessageListener(p -> c.stockageBDD(p.srcId, new String(p.data), true));
 
 		// add a connection listener that exit application when connection closed
 		c.addConnectionListener(active -> {
@@ -235,6 +263,26 @@ public class ClientMsg {
 
 		c.startSession(password);
 		System.out.println("Vous êtes : " + c.getIdentifier());
+		if (creation) {
+//			try {
+//				c.cnx = DriverManager.getConnection("jdbc:derby:target/sample;create=true");
+//			} catch (SQLException e) {
+//				e.printStackTrace();
+//				System.out.println("PAS DE CONNEXION!");
+//			}
+//			try {
+//				c.cnx.createStatement().executeUpdate("DROP TABLE MsgUser" + c.getIdentifier());
+//			} catch (SQLException e) {
+//
+//			}
+//			try {
+//				c.cnx.createStatement().executeUpdate(
+//						"CREATE TABLE MsgUser" + c.getIdentifier() + " (id INT, msg VARCHAR(255), reception BOOLEAN)");
+//			} catch (SQLException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+		}
 
 		String lu = null;
 		while (!"\\quit".equals(lu)) {
@@ -243,26 +291,27 @@ public class ClientMsg {
 				String dest = sc.nextLine();
 				if (dest.equals("x")) {
 					System.out.println("Deconnexion");
-					c.closeSession();	
+					c.closeSession();
 				}
 				int destToInt = Integer.parseInt(dest);
-				
+
 				if (destToInt == 0) {
 					ByteArrayOutputStream bos = new ByteArrayOutputStream();
 					DataOutputStream dos = new DataOutputStream(bos);
 					// Création de groupe
-					System.out.println("Que voulez-vous faire? (1 : création de groupe, 2 : Suppression de groupe, 3 : Ajout d'un membre dans un groupe, 4 : Suppression d'un membre dans un groupe");
+					System.out.println(
+							"Que voulez-vous faire? (1 : création de groupe, 2 : Suppression de groupe, 3 : Ajout d'un membre dans un groupe, 4 : Suppression d'un membre dans un groupe");
 					int choix = Integer.parseInt(sc.nextLine());
 					dos.writeByte(choix);
 					switch (choix) {
-					case 1 : //création de groupe
+					case 1: // création de groupe
 						System.out.println("Id des membres ? (séparé par des virgules)");
 						lu = sc.nextLine();
 						String[] parts = lu.split(","); // Diviser la chaîne en sous-chaînes en utilisant la virgule
 														// comme délimiteur
-	
+
 						int[] numbers = new int[parts.length]; // Créer un tableau pour stocker les entiers
-	
+
 						for (int i = 0; i < parts.length || i == 19; i++) {
 							numbers[i] = Integer.parseInt(parts[i].trim()); // Convertir chaque sous-chaîne en entier //
 																			// stocker dans le tableau
@@ -274,14 +323,14 @@ public class ClientMsg {
 						dos.flush();
 						c.sendPacket(0, bos.toByteArray());
 						break;
-					case 2 : //suppression de groupe
+					case 2: // suppression de groupe
 						System.out.println("Id du groupe?");
 						int idGroupe = Integer.parseInt(sc.nextLine());
 						dos.writeInt(idGroupe);
 						dos.flush();
 						c.sendPacket(0, bos.toByteArray());
 						break;
-					case 3 : //Ajout d'un nouveau membre
+					case 3: // Ajout d'un nouveau membre
 						System.out.println("Id du groupe?");
 						int idGroupe2 = Integer.parseInt(sc.nextLine());
 						dos.writeInt(idGroupe2);
@@ -291,7 +340,7 @@ public class ClientMsg {
 						dos.flush();
 						c.sendPacket(0, bos.toByteArray());
 						break;
-					case 4 : //Suppression d'un membre
+					case 4: // Suppression d'un membre
 						System.out.println("Id du groupe?");
 						int idGroupe3 = Integer.parseInt(sc.nextLine());
 						dos.writeInt(idGroupe3);
@@ -306,6 +355,8 @@ public class ClientMsg {
 					System.out.println("Votre message ? ");
 					lu = sc.nextLine();
 					c.sendPacket(destToInt, lu.getBytes());
+					//c.stockageBDD(destToInt, lu, false);
+
 				}
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");

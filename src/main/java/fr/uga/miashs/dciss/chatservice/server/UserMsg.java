@@ -79,6 +79,7 @@ public class UserMsg implements PacketProcessor{
 	
 	public void close() {
 		active=false;
+		sendQueue.offer(Packet.POISON);
 		try {
 			if (s!=null) s.close();
 		} catch (IOException e) {
@@ -112,7 +113,7 @@ public class UserMsg implements PacketProcessor{
 			
 		} catch (IOException e) {
 			// problem in reading, probably end connection
-			e.printStackTrace();
+			//e.printStackTrace();
 			LOG.warning("Connection with client "+userId+" is broken...close it.");
 		}
 		close();
@@ -128,6 +129,7 @@ public class UserMsg implements PacketProcessor{
 				// on récupère un message à envoyer dans la file
 				// sinon on attend, car la méthode take est "bloquante" tant que la file est vide
 				p = sendQueue.take();
+				if (p==Packet.POISON) break;
 				// on envoie le paquet au client
 				dos.writeInt(p.srcId);
 				dos.writeInt(p.destId);
@@ -140,13 +142,14 @@ public class UserMsg implements PacketProcessor{
 		} catch (IOException e) {
 			// remet le paquet dans la file si pb de transmission (connexion terminée)
 			if (p!=null) sendQueue.offer(p);
-			e.printStackTrace();
+			//e.printStackTrace();
 			LOG.warning("Connection with client "+userId+" is broken...close it.");
 			//e.printStackTrace();
 		} catch (InterruptedException e) {
 			throw new ServerException("Sending loop thread of "+userId+" has been interrupted.",e);
 		}
-		close();
+		LOG.info("Send Loop ended for client "+userId);
+		//close();
 	}
 	
 	/**

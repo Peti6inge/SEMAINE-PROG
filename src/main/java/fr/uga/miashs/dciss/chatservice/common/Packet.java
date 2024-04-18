@@ -15,6 +15,8 @@ package fr.uga.miashs.dciss.chatservice.common;
  * Data structure to represent a packet
  */
 public class Packet {
+	
+	public final static Packet POISON=new Packet(0,0,new byte[0]);
 
 	public final int srcId;
 	public final int destId;
