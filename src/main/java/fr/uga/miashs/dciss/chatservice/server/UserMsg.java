@@ -107,6 +107,7 @@ public class UserMsg implements PacketProcessor{
 				dis.readFully(content);
 				// on envoie le paquet à ServerMsg pour qu'il le gère
 				server.processPacket(new Packet(userId,destId,content));
+				LOG.info("Id : " + userId +" end message received");
 			}
 			
 		} catch (IOException e) {
@@ -133,6 +134,7 @@ public class UserMsg implements PacketProcessor{
 				dos.writeInt(p.data.length);
 				dos.write(p.data);
 				dos.flush();
+				p = null;
 				
 			}
 		} catch (IOException e) {

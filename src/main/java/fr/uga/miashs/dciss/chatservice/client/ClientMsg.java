@@ -154,7 +154,6 @@ public class ClientMsg {
 			e.printStackTrace();
 			closeSession();
 		}
-
 	}
 
 	/**
@@ -168,6 +167,7 @@ public class ClientMsg {
 				int dest = dis.readInt();
 				int length = dis.readInt();
 				byte[] data = new byte[length];
+				System.out.println("sender : " + sender + " dest : " + dest + " length : " + length);
 				dis.readFully(data);
 				notifyMessageListeners(new Packet(sender, dest, data));
 
