@@ -71,7 +71,7 @@ public class UserMsg implements PacketProcessor{
 	 * METHODS FOR MANAING THE CONNECTION
 	 */
 	public boolean open(Socket s) {
-		if (active) return false;
+//		if (active) return false;
 		this.s=s;
 		active=true;
 		return true;
@@ -111,6 +111,7 @@ public class UserMsg implements PacketProcessor{
 			
 		} catch (IOException e) {
 			// problem in reading, probably end connection
+			e.printStackTrace();
 			LOG.warning("Connection with client "+userId+" is broken...close it.");
 		}
 		close();
@@ -137,6 +138,7 @@ public class UserMsg implements PacketProcessor{
 		} catch (IOException e) {
 			// remet le paquet dans la file si pb de transmission (connexion terminée)
 			if (p!=null) sendQueue.offer(p);
+			e.printStackTrace();
 			LOG.warning("Connection with client "+userId+" is broken...close it.");
 			//e.printStackTrace();
 		} catch (InterruptedException e) {

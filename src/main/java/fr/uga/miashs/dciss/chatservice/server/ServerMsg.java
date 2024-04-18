@@ -49,6 +49,7 @@ public class ServerMsg {
 		nextGroupId = new AtomicInteger(-1);
 		sp = new ServerPacketProcessor(this);
 		executor = Executors.newCachedThreadPool();
+		passwords = new HashMap<>();
 	}
 
 	public GroupMsg createGroup(int ownerId) {
@@ -73,17 +74,17 @@ public class ServerMsg {
 		LOG.info("Group " + groupId + " deleted");
 		return true;
 	}
-	
+
 	public boolean AddUsertoGroup(int userId, int groupId, int userToAddId) {
 		GroupMsg g = groups.get(groupId);
-		if (g == null || userId != g.getOwnerId() || g.getMembers().contains(users.get(userToAddId)) ) {
+		if (g == null || userId != g.getOwnerId() || g.getMembers().contains(users.get(userToAddId))) {
 			LOG.info("Adding user " + userToAddId + " is impossible");
 			return false;
 		}
 		g.addMember(users.get(userToAddId));
 		return true;
 	}
-	
+
 	public boolean RemoveUsertoGroup(int userId, int groupId, int userToAddId) {
 		GroupMsg g = groups.get(groupId);
 		if (g == null || userId != g.getOwnerId() || !g.getMembers().contains(users.get(userToAddId))) {
@@ -139,7 +140,7 @@ public class ServerMsg {
 
 				// lit l'identifiant et le mot de passe du client
 				int userId = dis.readInt();
-	            String password = dis.readUTF();
+				String password = dis.readUTF();
 				if (userId == 0) {
 					// si 0 alors il faut créer un nouvel utilisateur et
 					// envoyer l'identifiant au client
@@ -147,16 +148,15 @@ public class ServerMsg {
 					dos.writeInt(userId);
 					dos.flush();
 					users.put(userId, new UserMsg(userId, this));
-					passwords = new HashMap<>();
 					passwords.put(userId, password);
-				} else {
-					dos.writeInt(userId);
-					dos.flush();
 				}
+
 
 				if (!users.containsKey(userId) || !(passwords.get(userId).equals(password))) {
 					// Si l'Id est inconnu ou s'il ne correspond pas au mot de passe saisi
+					LOG.info(userId + " bad password : " + password);
 					s.close();
+					continue;
 				}
 
 				// si l'identifiant existe ou est nouveau alors

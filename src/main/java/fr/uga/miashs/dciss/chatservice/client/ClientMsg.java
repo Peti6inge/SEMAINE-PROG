@@ -151,6 +151,7 @@ public class ClientMsg {
 			}
 		} catch (IOException e) {
 			// error, connection closed
+			e.printStackTrace();
 			closeSession();
 		}
 
@@ -173,6 +174,7 @@ public class ClientMsg {
 			}
 		} catch (IOException e) {
 			// error, connection closed
+			e.printStackTrace();
 		}
 		closeSession();
 	}
