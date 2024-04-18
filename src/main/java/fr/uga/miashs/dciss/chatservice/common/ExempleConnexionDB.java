@@ -31,7 +31,7 @@ public class ExempleConnexionDB {
 			boolean inserted = pstmt.executeUpdate()==1;
 			
 			
-			ResultSet res = cnx.createStatement().executeQuery("SELECT * FROM MsgUser");
+			ResultSet res = cnx.createStatement().executeQuery("SELECT msg FROM MsgUser");
 			
 			while (res.next()) {
 				System.out.println(res.getInt(1)+" - "+res.getString(2));

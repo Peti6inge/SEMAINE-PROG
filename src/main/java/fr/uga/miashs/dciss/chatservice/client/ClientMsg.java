@@ -14,6 +14,8 @@ package fr.uga.miashs.dciss.chatservice.client;
 import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -61,8 +63,8 @@ public class ClientMsg {
 		serverPort = port;
 		identifier = id;
 		mListeners = new ArrayList<>();
-		cListeners = new ArrayList<>();	
-		
+		cListeners = new ArrayList<>();
+
 	}
 
 	/**
@@ -110,6 +112,15 @@ public class ClientMsg {
 		return identifier;
 	}
 
+	private byte[] readFile(String filePath) throws IOException {
+		File file = new File(filePath);
+		byte[] fileContent = new byte[(int) file.length()];
+		FileInputStream fis = new FileInputStream(file);
+		fis.read(fileContent);
+		fis.close();
+		return fileContent;
+	}
+
 	/**
 	 * Method to be called to establish the connection.
 	 * 
@@ -145,11 +156,14 @@ public class ClientMsg {
 	 * @param destId the destinatiion id
 	 * @param data   the data to be sent
 	 */
-	public void sendPacket(int destId, byte[] data) {
+	public void sendPacket(int destId, byte[] data, byte fichier, byte[] nomFichier) {
 		try {
 			synchronized (dos) {
 				dos.writeInt(destId);
 				dos.writeInt(data.length);
+				dos.write(fichier);
+				dos.writeInt(nomFichier.length);
+				dos.write(nomFichier);
 				dos.write(data);
 				dos.flush();
 			}
@@ -170,9 +184,13 @@ public class ClientMsg {
 				int sender = dis.readInt();
 				int dest = dis.readInt();
 				int length = dis.readInt();
+				byte fichier = dis.readByte();
+				int lengthnomFichier = dis.readInt();
+				byte[] nomFichier = new byte[lengthnomFichier];
+				dis.readFully(nomFichier);
 				byte[] data = new byte[length];
 				dis.readFully(data);
-				notifyMessageListeners(new Packet(sender, dest, data));
+				notifyMessageListeners(new Packet(sender, fichier, dest, data, nomFichier));
 
 			}
 		} catch (IOException e) {
@@ -252,8 +270,29 @@ public class ClientMsg {
 		}
 
 		// add a dummy listener that print the content of message as a string
-		
-		c.addMessageListener(p -> c.stockageBDD(p.srcId, new String(p.data), true));
+
+		c.addMessageListener(p -> {
+			if (p.fichier == (byte) 0)
+				c.stockageBDD(p.srcId, new String(p.data), true);
+			if (p.fichier == (byte) 1) {
+				c.stockageBDD(p.srcId, "Un fichier a été envoyé", true);
+				FileOutputStream fos = null;
+				try {
+					String name = new String(p.nomFichier);
+					fos = new FileOutputStream("RECU/" + name);
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				try {
+					fos.write(p.data);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+			}
+		});
 
 		// add a connection listener that exit application when connection closed
 		c.addConnectionListener(active -> {
@@ -328,14 +367,14 @@ public class ClientMsg {
 							dos.writeInt(num);
 						}
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray());
+						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					case 2: // suppression de groupe
 						System.out.println("Id du groupe?");
 						int idGroupe = Integer.parseInt(sc.nextLine());
 						dos.writeInt(idGroupe);
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray());
+						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					case 3: // Ajout d'un nouveau membre
 						System.out.println("Id du groupe?");
@@ -345,7 +384,7 @@ public class ClientMsg {
 						int idMembre = Integer.parseInt(sc.nextLine());
 						dos.writeInt(idMembre);
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray());
+						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					case 4: // Suppression d'un membre
 						System.out.println("Id du groupe?");
@@ -355,15 +394,28 @@ public class ClientMsg {
 						int idMembre2 = Integer.parseInt(sc.nextLine());
 						dos.writeInt(idMembre2);
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray());
+						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					}
 				} else {
-					System.out.println("Votre message ? ");
-					lu = sc.nextLine();
-					c.sendPacket(destToInt, lu.getBytes());
-					c.stockageBDD(destToInt, lu, false);
-
+					System.out.println("(1) Message? (2) Fichier?");
+					int cas = Integer.parseInt(sc.nextLine());
+					switch (cas) {
+					case 1:
+						System.out.println("Votre message ? ");
+						lu = sc.nextLine();
+						c.sendPacket(destToInt, lu.getBytes(), (byte) 0, new byte[0]);
+						c.stockageBDD(destToInt, lu, false);
+						break;
+					case 2:
+						System.out.println("Votre fichier ? ");
+						String filePath = "ENVOI/" + sc.nextLine();
+						File fichier = new File(filePath);
+						byte[] nomFichier = fichier.getName().getBytes();
+						byte[] fileContent = c.readFile(filePath);
+						c.sendPacket(destToInt, fileContent, (byte) 1, nomFichier);
+						break;
+					}
 				}
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
@@ -382,5 +434,4 @@ public class ClientMsg {
 		c.closeSession();
 
 	}
-
 }

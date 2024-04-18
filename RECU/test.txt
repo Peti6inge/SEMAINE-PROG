@@ -1,0 +1,1 @@
+Ceci est les contenu du document test.txt.

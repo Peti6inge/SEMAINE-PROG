@@ -16,18 +16,21 @@ package fr.uga.miashs.dciss.chatservice.common;
  */
 public class Packet {
 	
-	public final static Packet POISON=new Packet(0,0,new byte[0]);
+	public final static Packet POISON=new Packet(0,(byte)0,0, new byte[0], new byte[0]);
 
 	public final int srcId;
 	public final int destId;
+	public final byte fichier;
 	public final byte[] data;
+	public final byte[] nomFichier;
 	
-	public Packet(int srcId, int destId, byte[] data) {
+	public Packet(int srcId, byte fichier, int destId,  byte[] data, byte[] nomFichier) {
 		super();
 		this.srcId = srcId;
 		this.destId = destId;
 		this.data = data;
+		this.fichier = fichier;
+		this.nomFichier = nomFichier;
 	}
-	
 	
 }

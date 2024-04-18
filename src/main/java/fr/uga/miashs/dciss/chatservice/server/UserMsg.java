@@ -101,13 +101,16 @@ public class UserMsg implements PacketProcessor{
 			// tant que la connexion n'est pas terminée
 			while (active && ! s.isInputShutdown()) {
 				// on lit les paquets envoyé par le client
-				int destId = dis.readInt();
-				// dis.readUTF();
+				int destId = dis.readInt();				
 				int length = dis.readInt();
+				byte fichier = dis.readByte();
+				int lengthnomFichier = dis.readInt();
+				byte[] nomFichier = new byte[lengthnomFichier];
+				dis.readFully(nomFichier);				
 				byte[] content = new byte[length];
 				dis.readFully(content);
 				// on envoie le paquet à ServerMsg pour qu'il le gère
-				server.processPacket(new Packet(userId,destId,content));
+				server.processPacket(new Packet(userId, fichier, destId, content, nomFichier));
 				LOG.info("Id : " + userId +" end message received");
 			}
 			
@@ -134,6 +137,9 @@ public class UserMsg implements PacketProcessor{
 				dos.writeInt(p.srcId);
 				dos.writeInt(p.destId);
 				dos.writeInt(p.data.length);
+				dos.write(p.fichier);
+				dos.writeInt(p.nomFichier.length);
+				dos.write(p.nomFichier);
 				dos.write(p.data);
 				dos.flush();
 				p = null;
