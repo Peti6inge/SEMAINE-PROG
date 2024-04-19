@@ -23,7 +23,7 @@ import java.util.*;
 public class UserMsg implements PacketProcessor{
 	private final static Logger LOG = Logger.getLogger(UserMsg.class.getName());
 	
-	private int userId;
+	private String userName;
 	private Set<GroupMsg> groups;
 	
 	private ServerMsg server;
@@ -32,17 +32,17 @@ public class UserMsg implements PacketProcessor{
 	
 	private BlockingQueue<Packet> sendQueue;
 	
-	public UserMsg(int clientId, ServerMsg server) {
-		if (clientId<1) throw new IllegalArgumentException("id must not be less than 0");
+	public UserMsg(String clientName, ServerMsg server) {
+		
 		this.server=server;
-		this.userId=clientId;
+		this.userName=clientName;
 		active=false;
 		sendQueue = new LinkedBlockingQueue<>();
 		groups = Collections.synchronizedSet(new HashSet<>());
 	}
 	
-	public int getId() {
-		return userId;
+	public String getName() {
+		return userName;
 	}
 	
 	public boolean removeGroup(GroupMsg g) {
@@ -87,7 +87,7 @@ public class UserMsg implements PacketProcessor{
 			e.printStackTrace();
 		}
 		s=null;
-		LOG.info(userId + " deconnected");
+		LOG.info(userName + " deconnected");
 	}
 	
 	public boolean isConnected() {
@@ -101,23 +101,23 @@ public class UserMsg implements PacketProcessor{
 			// tant que la connexion n'est pas terminée
 			while (active && ! s.isInputShutdown()) {
 				// on lit les paquets envoyé par le client
-				int destId = dis.readInt();				
+				String destUserName = dis.readUTF();				
 				int length = dis.readInt();
 				byte fichier = dis.readByte();
 				int lengthnomFichier = dis.readInt();
 				byte[] nomFichier = new byte[lengthnomFichier];
-				dis.readFully(nomFichier);				
+				dis.readFully(nomFichier);
 				byte[] content = new byte[length];
 				dis.readFully(content);
 				// on envoie le paquet à ServerMsg pour qu'il le gère
-				server.processPacket(new Packet(userId, fichier, destId, content, nomFichier));
-				LOG.info("Id : " + userId +" end message received");
+				server.processPacket(new Packet(userName, fichier, destUserName, content, nomFichier));
+				LOG.info("Id : " + userName +" end message received");
 			}
 			
 		} catch (IOException e) {
 			// problem in reading, probably end connection
 			//e.printStackTrace();
-			LOG.warning("Connection with client "+userId+" is broken...close it.");
+			LOG.warning("Connection with client "+userName+" is broken...close it.");
 		}
 		close();
 	}
@@ -134,8 +134,8 @@ public class UserMsg implements PacketProcessor{
 				p = sendQueue.take();
 				if (p==Packet.POISON) break;
 				// on envoie le paquet au client
-				dos.writeInt(p.srcId);
-				dos.writeInt(p.destId);
+				dos.writeUTF(p.srcUsername);
+				dos.writeUTF(p.destUsername);
 				dos.writeInt(p.data.length);
 				dos.write(p.fichier);
 				dos.writeInt(p.nomFichier.length);
@@ -149,12 +149,12 @@ public class UserMsg implements PacketProcessor{
 			// remet le paquet dans la file si pb de transmission (connexion terminée)
 			if (p!=null) sendQueue.offer(p);
 			//e.printStackTrace();
-			LOG.warning("Connection with client "+userId+" is broken...close it.");
+			LOG.warning("Connection with client "+userName+" is broken...close it.");
 			//e.printStackTrace();
 		} catch (InterruptedException e) {
-			throw new ServerException("Sending loop thread of "+userId+" has been interrupted.",e);
+			throw new ServerException("Sending loop thread of "+userName+" has been interrupted.",e);
 		}
-		LOG.info("Send Loop ended for client "+userId);
+		LOG.info("Send Loop ended for client "+userName);
 		//close();
 	}
 	

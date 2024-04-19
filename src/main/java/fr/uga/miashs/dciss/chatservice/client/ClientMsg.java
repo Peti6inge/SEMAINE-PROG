@@ -40,7 +40,7 @@ public class ClientMsg {
 	private DataOutputStream dos;
 	private DataInputStream dis;
 
-	private int identifier;
+	private String username;
 
 	private List<MessageListener> mListeners;
 	private List<ConnectionListener> cListeners;
@@ -54,28 +54,13 @@ public class ClientMsg {
 	 * @param address The server address or hostname
 	 * @param port    The port number
 	 */
-	public ClientMsg(int id, String address, int port) {
-		if (id < 0)
-			throw new IllegalArgumentException("id must not be less than 0");
-		if (port <= 0)
-			throw new IllegalArgumentException("Server port must be greater than 0");
+	public ClientMsg(String username, String address, int port) {
 		serverAddress = address;
 		serverPort = port;
-		identifier = id;
+		this.username = username;
 		mListeners = new ArrayList<>();
 		cListeners = new ArrayList<>();
 
-	}
-
-	/**
-	 * Create a client without id, the server will provide an id during the session
-	 * start
-	 * 
-	 * @param address The server address or hostname
-	 * @param port    The port number
-	 */
-	public ClientMsg(String address, int port) {
-		this(0, address, port);
 	}
 
 	/**
@@ -108,8 +93,8 @@ public class ClientMsg {
 		cListeners.forEach(x -> x.connectionEvent(active));
 	}
 
-	public int getIdentifier() {
-		return identifier;
+	public String getusername() {
+		return username;
 	}
 
 	private byte[] readFile(String filePath) throws IOException {
@@ -127,18 +112,15 @@ public class ClientMsg {
 	 * @throws UnknownHostException
 	 * @throws IOException
 	 */
-	public void startSession(String password) throws UnknownHostException {
+	public void startSession(String password, String username) throws UnknownHostException {
 		if (s == null || s.isClosed()) {
 			try {
 				s = new Socket(serverAddress, serverPort);
 				dos = new DataOutputStream(s.getOutputStream());
 				dis = new DataInputStream(s.getInputStream());
-				dos.writeInt(identifier);
+				dos.writeUTF(username);
 				dos.writeUTF(password);
 				dos.flush();
-				if (identifier == 0) {
-					identifier = dis.readInt();
-				}
 				// start the receive loop
 				new Thread(() -> receiveLoop()).start();
 				notifyConnectionListeners(true);
@@ -156,10 +138,10 @@ public class ClientMsg {
 	 * @param destId the destinatiion id
 	 * @param data   the data to be sent
 	 */
-	public void sendPacket(int destId, byte[] data, byte fichier, byte[] nomFichier) {
+	public void sendPacket(String destUsername, byte[] data, byte fichier, byte[] nomFichier) {
 		try {
 			synchronized (dos) {
-				dos.writeInt(destId);
+				dos.writeUTF(destUsername);
 				dos.writeInt(data.length);
 				dos.write(fichier);
 				dos.writeInt(nomFichier.length);
@@ -181,8 +163,8 @@ public class ClientMsg {
 		try {
 			while (s != null && !s.isClosed()) {
 
-				int sender = dis.readInt();
-				int dest = dis.readInt();
+				String sender = dis.readUTF();
+				String dest = dis.readUTF();
 				int length = dis.readInt();
 				byte fichier = dis.readByte();
 				int lengthnomFichier = dis.readInt();
@@ -210,22 +192,23 @@ public class ClientMsg {
 		notifyConnectionListeners(false);
 	}
 
-	private void stockageBDD(int id, String msg, boolean reception) {
+	private void stockageBDD(String sender, String msg, boolean reception) {
 		try {
 
-			PreparedStatement pstmt = cnx.prepareStatement("INSERT INTO MsgUser" + identifier + " VALUES (?,?,?)");
+			PreparedStatement pstmt = cnx.prepareStatement("INSERT INTO MsgUser" + username + " VALUES (?,?,?)");
 
-			pstmt.setInt(1, id);
+			pstmt.setString(1, sender);
 			pstmt.setString(2, msg);
 			pstmt.setBoolean(3, reception);
 
 			boolean inserted = pstmt.executeUpdate() == 1;
 
-			ResultSet res = cnx.createStatement().executeQuery("SELECT * FROM MsgUser" + identifier);
-
+			ResultSet res = cnx.createStatement().executeQuery("SELECT * FROM MsgUser" + username);
+			System.out.println("---------------");
 			while (res.next()) {
-				System.out.println(res.getInt(1) + " - " + res.getString(2) + " - " + res.getBoolean(3));
+				System.out.println(res.getString(1) + " - " + res.getString(2) + " - " + res.getBoolean(3));
 			}
+			System.out.println("---------------");
 
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -238,44 +221,34 @@ public class ClientMsg {
 
 		// Authentification
 
-		int id = 0;
 		String password;
+		String usernameSaisi = null;
 		boolean creation = false;
 		Scanner sc = new Scanner(System.in);
 
 		if (args.length >= 2) {
 			System.out.println("2 args");
-			id = Integer.parseInt(args[0]);
+			usernameSaisi = args[0];
 			password = args[1];
 		} else {
 			System.out.println("Voulez-vous créer un compte? (o/n)");
 			creation = sc.nextLine().equals("o") ? true : false;
-			if (creation) {
-				// Création d'un compte
-				System.out.println("Saisissez votre mot de passe :");
-				password = sc.nextLine();
-			} else {
-				// Connexion
-				System.out.println("Saisissez votre identifiant :");
-				id = Integer.parseInt(sc.nextLine());
-				System.out.println("Saisissez votre mot de passe :");
-				password = sc.nextLine();
-			}
-		}
-		ClientMsg c;
-		if (creation) {
-			c = new ClientMsg("localhost", 1666);
-		} else {
-			c = new ClientMsg(id, "localhost", 1666);
-		}
+			// Création d'un compte
+			System.out.println("Saisissez votre nom d'utilisateur :");
+			usernameSaisi = sc.nextLine();
+			System.out.println("Saisissez votre mot de passe :");
+			password = sc.nextLine();
 
+		}
+		ClientMsg c = new ClientMsg(usernameSaisi, "localhost", 1666);
 		// add a dummy listener that print the content of message as a string
 
 		c.addMessageListener(p -> {
 			if (p.fichier == (byte) 0)
-				c.stockageBDD(p.srcId, new String(p.data), true);
+				c.stockageBDD(p.srcUsername, new String(p.data), true);
 			if (p.fichier == (byte) 1) {
-				c.stockageBDD(p.srcId, "Un fichier a été envoyé", true);
+				c.stockageBDD(p.srcUsername, p.srcUsername + " vous a été envoyé le fichier suivant : " + new String(p.nomFichier),
+						true);
 				FileOutputStream fos = null;
 				try {
 					String name = new String(p.nomFichier);
@@ -300,35 +273,36 @@ public class ClientMsg {
 				System.exit(0);
 		});
 
-		c.startSession(password);
-		System.out.println("Vous êtes : " + c.getIdentifier());
+		c.startSession(password, c.username);
 		if (creation) {
 			try {
-				c.cnx = DriverManager.getConnection("jdbc:derby:target/" + c.getIdentifier() + ";create=true");
+				c.cnx = DriverManager.getConnection("jdbc:derby:target/" + c.getusername() + ";create=true");
 			} catch (SQLException e) {
-				e.printStackTrace();
 				System.out.println("PAS DE CONNEXION!");
+				c.closeSession();
 			}
 			try {
-				c.cnx.createStatement().executeUpdate("DROP TABLE MsgUser" + c.getIdentifier());
+				c.cnx.createStatement().executeUpdate("DROP TABLE MsgUser" + c.getusername());
 			} catch (SQLException e) {
 
 			}
 			try {
 				c.cnx.createStatement().executeUpdate(
-						"CREATE TABLE MsgUser" + c.getIdentifier() + " (id INT, msg VARCHAR(255), reception BOOLEAN)");
+						"CREATE TABLE MsgUser" + c.getusername() + " (username VARCHAR(255), msg VARCHAR(255), reception BOOLEAN)");
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		} else {
 			try {
-				c.cnx = DriverManager.getConnection("jdbc:derby:target/" + c.getIdentifier() + ";create=false");
+				c.cnx = DriverManager.getConnection("jdbc:derby:target/" + c.getusername() + ";create=false");
 			} catch (SQLException e) {
-				e.printStackTrace();
 				System.out.println("PAS DE CONNEXION!");
+				c.closeSession();
 			}
 		}
+
+		System.out.println("Vous êtes : " + c.getusername());
 
 		String lu = null;
 		while (!"\\quit".equals(lu)) {
@@ -339,9 +313,8 @@ public class ClientMsg {
 					System.out.println("Deconnexion");
 					c.closeSession();
 				}
-				int destToInt = Integer.parseInt(dest);
 
-				if (destToInt == 0) {
+				if (dest.equals("0")) {
 					ByteArrayOutputStream bos = new ByteArrayOutputStream();
 					DataOutputStream dos = new DataOutputStream(bos);
 					// Création de groupe
@@ -351,50 +324,46 @@ public class ClientMsg {
 					dos.writeByte(choix);
 					switch (choix) {
 					case 1: // création de groupe
-						System.out.println("Id des membres ? (séparé par des virgules)");
+						System.out.println("Nom du groupe ?");
+						lu = sc.nextLine();
+						dos.writeUTF(lu);
+						System.out.println("Nom des membres ? (séparés par des virgules)");
 						lu = sc.nextLine();
 						String[] parts = lu.split(","); // Diviser la chaîne en sous-chaînes en utilisant la virgule
 														// comme délimiteur
-
-						int[] numbers = new int[parts.length]; // Créer un tableau pour stocker les entiers
-
-						for (int i = 0; i < parts.length || i == 19; i++) {
-							numbers[i] = Integer.parseInt(parts[i].trim()); // Convertir chaque sous-chaîne en entier //
-																			// stocker dans le tableau
-						}
-						dos.writeInt(numbers.length);
-						for (int num : numbers) {
-							dos.writeInt(num);
+						dos.writeInt(parts.length);
+						for (String part : parts) {
+							dos.writeUTF(part);
 						}
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
+						c.sendPacket("0", bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					case 2: // suppression de groupe
-						System.out.println("Id du groupe?");
-						int idGroupe = Integer.parseInt(sc.nextLine());
-						dos.writeInt(idGroupe);
+						System.out.println("Nom du groupe?");
+						String groupe = sc.nextLine();
+						dos.writeUTF(groupe);
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
+						c.sendPacket("0", bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					case 3: // Ajout d'un nouveau membre
-						System.out.println("Id du groupe?");
-						int idGroupe2 = Integer.parseInt(sc.nextLine());
-						dos.writeInt(idGroupe2);
-						System.out.println("Id du membre à ajouter?");
-						int idMembre = Integer.parseInt(sc.nextLine());
-						dos.writeInt(idMembre);
+						System.out.println("Nom du groupe?");
+						String groupe2 = sc.nextLine();
+						dos.writeUTF(groupe2);
+						System.out.println("Nom du membre à ajouter?");
+						String membre = sc.nextLine();
+						dos.writeUTF(membre);
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
+						c.sendPacket("0", bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					case 4: // Suppression d'un membre
-						System.out.println("Id du groupe?");
-						int idGroupe3 = Integer.parseInt(sc.nextLine());
-						dos.writeInt(idGroupe3);
-						System.out.println("Id du membre à supprimer?");
-						int idMembre2 = Integer.parseInt(sc.nextLine());
-						dos.writeInt(idMembre2);
+						System.out.println("Nom du groupe?");
+						String groupe3 = sc.nextLine();
+						dos.writeUTF(groupe3);
+						System.out.println("Nom du membre à ajouter?");
+						String membre2 = sc.nextLine();
+						dos.writeUTF(membre2);
 						dos.flush();
-						c.sendPacket(0, bos.toByteArray(), (byte) 0, new byte[0]);
+						c.sendPacket("0", bos.toByteArray(), (byte) 0, new byte[0]);
 						break;
 					}
 				} else {
@@ -404,8 +373,8 @@ public class ClientMsg {
 					case 1:
 						System.out.println("Votre message ? ");
 						lu = sc.nextLine();
-						c.sendPacket(destToInt, lu.getBytes(), (byte) 0, new byte[0]);
-						c.stockageBDD(destToInt, lu, false);
+						c.sendPacket(dest, lu.getBytes(), (byte) 0, new byte[0]);
+						c.stockageBDD(dest.substring(0, 1).equals("@")?dest.substring(1):dest, lu, false);
 						break;
 					case 2:
 						System.out.println("Votre fichier ? ");
@@ -413,7 +382,7 @@ public class ClientMsg {
 						File fichier = new File(filePath);
 						byte[] nomFichier = fichier.getName().getBytes();
 						byte[] fileContent = c.readFile(filePath);
-						c.sendPacket(destToInt, fileContent, (byte) 1, nomFichier);
+						c.sendPacket(dest, fileContent, (byte) 1, nomFichier);
 						break;
 					}
 				}

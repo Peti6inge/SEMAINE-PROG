@@ -11,6 +11,9 @@
 
 package fr.uga.miashs.dciss.chatservice.server;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
@@ -29,32 +32,72 @@ public class ServerPacketProcessor implements PacketProcessor {
 		// ByteBufferVersion. On aurait pu utiliser un ByteArrayInputStream + DataInputStream à la place
 		ByteBuffer buf = ByteBuffer.wrap(p.data);
 		byte type = buf.get();
-		
+		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf.array());
+        DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
 		switch (type) {
 		case 1 :  // Création d'un groupe
-			createGroup(p.srcId,buf);
+			createGroup(p.srcUsername,buf);
 			break;
 		case 2 : // Suppression d'un groupe
-			server.removeGroup(p.srcId, buf.getInt());
+			try {
+				server.removeGroup(p.srcUsername, dataInputStream.readUTF());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			break;
 		case 3 : // Ajout d'un membre
-			server.AddUsertoGroup(p.srcId, buf.getInt(), buf.getInt());
+			
+			try {
+				server.AddUsertoGroup(p.srcUsername, dataInputStream.readUTF(), dataInputStream.readUTF());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			break;
 		case 4 : // Suppression d'un membre
-			server.RemoveUsertoGroup(p.srcId, buf.getInt(), buf.getInt());
+			try {
+				server.RemoveUsertoGroup(p.srcUsername, dataInputStream.readUTF(), dataInputStream.readUTF());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			break;
 		default : 
 			LOG.warning("Server message of type=" + type + " not handled by procesor");
 
 		}
+		try {
+			dataInputStream.close();
+	        byteArrayInputStream.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
-	public void createGroup(int ownerId, ByteBuffer data) {
-		int nb = data.getInt();
-		GroupMsg g = server.createGroup(ownerId);
-		for (int i = 0; i < nb; i++) {
-			g.addMember(server.getUser(data.getInt()));
+	public void createGroup(String ownerName, ByteBuffer data) {
+		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data.array());
+        DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
+
+        int nb;
+		try {
+            String groupeName = dataInputStream.readUTF();
+            nb = dataInputStream.readInt();
+			GroupMsg g = server.createGroup(ownerName, groupeName);
+			for (int i = 0; i < nb; i++) {
+	            String str = dataInputStream.readUTF();
+	            g.addMember(server.getUser(str));
+	        }
+			dataInputStream.close();
+            byteArrayInputStream.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		
+		
 	}
 
 }

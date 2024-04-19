@@ -16,18 +16,18 @@ package fr.uga.miashs.dciss.chatservice.common;
  */
 public class Packet {
 	
-	public final static Packet POISON=new Packet(0,(byte)0,0, new byte[0], new byte[0]);
+	public final static Packet POISON=new Packet("",(byte)0,"", new byte[0], new byte[0]);
 
-	public final int srcId;
-	public final int destId;
+	public final String srcUsername;
+	public final String destUsername;
 	public final byte fichier;
 	public final byte[] data;
 	public final byte[] nomFichier;
 	
-	public Packet(int srcId, byte fichier, int destId,  byte[] data, byte[] nomFichier) {
+	public Packet(String srcUsername, byte fichier, String destUsername,  byte[] data, byte[] nomFichier) {
 		super();
-		this.srcId = srcId;
-		this.destId = destId;
+		this.srcUsername = srcUsername;
+		this.destUsername = destUsername;
 		this.data = data;
 		this.fichier = fichier;
 		this.nomFichier = nomFichier;

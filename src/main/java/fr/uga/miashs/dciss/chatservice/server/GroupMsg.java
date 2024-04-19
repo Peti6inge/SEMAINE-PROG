@@ -18,25 +18,24 @@ import fr.uga.miashs.dciss.chatservice.common.Packet;
 
 public class GroupMsg implements PacketProcessor {
 
-	private int groupId;
+	private String groupname;
 	private UserMsg owner;
 	private Set<UserMsg> members;
 	
-	public GroupMsg(int groupId, UserMsg owner) {
-		if (groupId>-1) throw new IllegalArgumentException("id must not be less than 0");
+	public GroupMsg(String groupname, UserMsg owner) {
 		if (owner==null) throw new IllegalArgumentException("owner cannot be null");
-		this.groupId=groupId;
+		this.groupname=groupname;
 		this.owner=owner;
 		members=Collections.synchronizedSet(new HashSet<>());
 		addMember(owner);
 	}
 	
-	public int getId() {
-		return groupId;
+	public String getGroupname() {
+		return groupname;
 	}
 	
-	public int getOwnerId() {
-		return owner.getId();
+	public String getOwnerName() {
+		return owner.getName();
 	}
 		
 	/**
@@ -67,7 +66,7 @@ public class GroupMsg implements PacketProcessor {
 	@Override
 	public void process(Packet p) {
 		// send packet to members except the sender.
-		members.stream().filter(m->m.getId()!=p.srcId).forEach( m -> m.process(p));
+		members.stream().filter(m->m.getName()!=p.srcUsername).forEach( m -> m.process(p));
 	}
 	
 	// to be used carrefully, because it does not update birectional relationship in case of addition or removal.
